@@ -1,0 +1,58 @@
+server {
+    listen 80;
+    server_name magento.local;
+
+    location / {
+        proxy_pass http://varnish:80;
+        proxy_buffer_size          128k;
+        proxy_buffers              4 256k;
+        proxy_busy_buffers_size    256k;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+server {
+    listen 443 ssl;
+    server_name magento.local;
+    ssl_certificate /etc/ssl/mycerts/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/mycerts/nginx-selfsigned.key;
+
+    location / {
+        proxy_pass http://varnish:80;
+        proxy_buffer_size          128k;
+        proxy_buffers              4 256k;
+        proxy_busy_buffers_size    256k;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+server {
+    listen 80;
+    server_name pa.magento.local;
+
+    location / {
+        proxy_pass http://application:80;
+        proxy_buffer_size          128k;
+        proxy_buffers              4 256k;
+        proxy_busy_buffers_size    256k;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+server {
+    listen 80;
+    server_name pwa.magento.local;
+
+    location / {
+        proxy_pass http://application:10000;
+        proxy_buffer_size          128k;
+        proxy_buffers              4 256k;
+        proxy_busy_buffers_size    256k;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}

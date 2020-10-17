@@ -1,0 +1,4 @@
+.idea
+./mgdb/*
+!./mgdb/.gitkeep
+./html/spx_dumps/*

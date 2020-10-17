@@ -1,0 +1,126 @@
+version: '3'
+services:
+  application:
+    build: app
+    container_name: demo_app
+    environment:
+      BLACKFIRE_SERVER_TOKEN: ${BLACKFIRE_SERVER_TOKEN}
+      BLACKFIRE_CLIENT_TOKEN: ${BLACKFIRE_CLIENT_TOKEN}
+      BLACKFIRE_SERVER_ID: ${BLACKFIRE_SERVER_ID}
+      BLACKFIRE_CLIENT_ID: ${BLACKFIRE_CLIENT_ID}
+      XDEBUG_REMOTE_HOST_IP: ${XDEBUG_REMOTE_HOST_IP}
+      APACHE_LOG_DIR: "/var/www/log/apache2"
+      PHP_EXTENSION_XDEBUG: 1
+      PHP_INI_XDEBUG__REMOTE_PORT: 9001
+      XDEBUG_CONFIG: "remote_port=9001 remote_autostart=0 remote_enable=1"
+      PHP_IDE_CONFIG: "serverName=magento.local"
+    volumes:
+      - './../html:/var/www/html:delegated'
+      - './app/www/composer:/var/www/.composer:delegated'
+      - './app/php-dev.ini:/usr/local/etc/php/conf.d/999-dev-magento.ini:delegated'
+      - './app/apache-config.conf:/etc/apache2/sites-enabled/000-default.conf:delegated'
+      - './app/msmtprc:/etc/msmtprc:delegated'
+    expose:
+      - "9001"
+      - "443"
+    networks:
+      mycommerce:
+        aliases:
+          - app.magento.local
+
+  router:
+    image: nginx:alpine
+    container_name: demo_router
+    volumes:
+      - './router/templates:/etc/nginx/templates:delegated'
+      - './router/ssl:/etc/ssl/mycerts:delegated'
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      mycommerce:
+        aliases:
+          - pa.magento.local
+          - magento.local
+
+  db:
+    build: mariadb
+    container_name: demo_mariadb
+    command: [mysqld, --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --innodb_autoinc_lock_mode=0]
+    volumes:
+    - './../mgdb:/var/lib/mysql:delegated'
+    environment:
+    - MYSQL_ROOT_PASSWORD=ROOT
+    - MYSQL_DATABASE=dev_demo
+    - MYSQL_USER=dev_demo
+    - MYSQL_PASSWORD=dev_demo
+    ports:
+    - "33006:3306"
+    networks:
+      mycommerce:
+        aliases:
+          - demo_mariadb
+
+  rabbit:
+    image: rabbitmq:3.8-management
+    container_name: demo_rabbit
+    ports:
+    - "8081:15672"
+    volumes:
+    - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq.conf:ro
+    - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    networks:
+      mycommerce:
+        aliases:
+        - rabbit
+
+  varnish:
+    build: varnish
+    container_name: demo_varnish
+    volumes:
+      - './varnish/default.vcl:/etc/varnish/default.vcl:delegated'
+    depends_on:
+      - application
+    networks:
+      mycommerce:
+        aliases:
+          - varnish.local
+
+  elasticsearch: #if always stopped: sudo sysctl -w vm.max_map_count=524288
+    build: elasticsearch
+    container_name: demo_elasticsearch
+    ports:
+    - "9200:9200"
+    - "9300:9300"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      mycommerce:
+        aliases:
+        - elasticsearch
+
+  redis:
+    build: redis
+    container_name: demo_redis
+    ports:
+      - "6379:6379"
+    networks:
+      mycommerce:
+        aliases:
+          - redis
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: demo_mailhog
+    ports:
+    - "1025:1025"
+    - "8025:8025"
+    networks:
+      mycommerce:
+        aliases:
+        - mailserver
+
+networks:
+  mycommerce:
